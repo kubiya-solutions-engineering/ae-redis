@@ -6,7 +6,7 @@
       "alias": null,
       "description": "Stores request data in Redis ElastiCache",
       "type": "docker",
-      "content": "\ncurl -LsSf https://astral.sh/uv/install.sh | sh > /dev/null 2>&1\n. $HOME/.cargo/env\n\nuv venv > /dev/null 2>&1\n. .venv/bin/activate > /dev/null 2>&1\n\nuv pip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/main.py \"{{ .request_id }}\" \"{{ .user_name }}\" \"{{ .message }}\"     --priority {{ .priority }}\n",
+      "content": "\ncurl -LsSf https://astral.sh/uv/install.sh | sh > /dev/null 2>&1\n. $HOME/.cargo/env\n\nuv venv > /dev/null 2>&1\n. .venv/bin/activate > /dev/null 2>&1\n\nuv pip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/main.py \"{{ .request_id }}\" \"{{ .user_name }}\" \"{{ .message }}\" \"{{ .priority }}\"\n",
       "content_url": null,
       "args": [
         {

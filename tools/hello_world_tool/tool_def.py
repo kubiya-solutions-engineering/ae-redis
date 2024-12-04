@@ -25,8 +25,7 @@ uv venv > /dev/null 2>&1
 
 uv pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
-python /tmp/main.py "{{ .request_id }}" "{{ .user_name }}" "{{ .message }}" \
-    --priority {{ .priority }}
+python /tmp/main.py "{{ .request_id }}" "{{ .user_name }}" "{{ .message }}" "{{ .priority }}"
 """,
     with_files=[
         FileSpec(
