@@ -13,13 +13,12 @@ redis_tool = Tool(
     args=[
         Arg(name="request_id", description="Unique request identifier", required=True),
         Arg(name="user_name", description="Name of the user", required=True),
-        Arg(name="message", description="Message to store", required=True),
-        Arg(name="priority", description="Request priority", required=False, default="1"),
+        Arg(name="message", description="Message to store", required=True)
     ],
     content="""
 pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
-python /tmp/main.py "{{ .request_id }}" "{{ .user_name }}" "{{ .message }}" "{{ .priority }}"
+python /tmp/main.py "{{ .request_id }}" "{{ .user_name }}" "{{ .message }}"
 """,
     with_files=[
         FileSpec(
