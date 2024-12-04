@@ -10,6 +10,7 @@ redis_tool = Tool(
     type="docker",
     image="python:3.12",
     description="Stores request data in Redis ElastiCache",
+    env=["REDIS_HOST", "REDIS_PORT"],
     args=[
         Arg(name="request_id", description="Unique request identifier", required=True),
         Arg(name="user_name", description="Name of the user", required=True),
