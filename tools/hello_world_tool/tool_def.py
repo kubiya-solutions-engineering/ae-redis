@@ -17,13 +17,7 @@ redis_tool = Tool(
         Arg(name="priority", description="Request priority", required=False, default="1"),
     ],
     content="""
-curl -LsSf https://astral.sh/uv/install.sh | sh > /dev/null 2>&1
-. $HOME/.cargo/env
-
-uv venv > /dev/null 2>&1
-. .venv/bin/activate > /dev/null 2>&1
-
-uv pip install -r /tmp/requirements.txt > /dev/null 2>&1
+pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
 python /tmp/main.py "{{ .request_id }}" "{{ .user_name }}" "{{ .message }}" "{{ .priority }}"
 """,
