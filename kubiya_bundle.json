@@ -1,0 +1,82 @@
+{
+  "tools": [
+    {
+      "name": "store_request",
+      "source": null,
+      "alias": null,
+      "description": "Stores request data in Redis ElastiCache",
+      "type": "docker",
+      "content": "\ncurl -LsSf https://astral.sh/uv/install.sh | sh > /dev/null 2>&1\n. $HOME/.cargo/env\n\nuv venv > /dev/null 2>&1\n. .venv/bin/activate > /dev/null 2>&1\n\nuv pip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/main.py \"{{ .request_id }}\" \"{{ .user_name }}\" \"{{ .message }}\"     --priority {{ .priority }}\n",
+      "content_url": null,
+      "args": [
+        {
+          "name": "request_id",
+          "type": null,
+          "description": "Unique request identifier",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        },
+        {
+          "name": "user_name",
+          "type": null,
+          "description": "Name of the user",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        },
+        {
+          "name": "message",
+          "type": null,
+          "description": "Message to store",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        },
+        {
+          "name": "priority",
+          "type": null,
+          "description": "Request priority",
+          "required": false,
+          "default": "1",
+          "options": null,
+          "options_from": null
+        }
+      ],
+      "env": [],
+      "secrets": [],
+      "dependencies": null,
+      "dependencies_url": null,
+      "openapi": null,
+      "with_files": [
+        {
+          "source": null,
+          "destination": "/tmp/main.py",
+          "content": "import argparse\nimport redis\nimport json\nimport os\nfrom typing import Optional\n\n\ndef connect_to_redis() -> redis.Redis:\n    \"\"\"Establish connection to Redis using environment variables\"\"\"\n    host = os.getenv('REDIS_HOST')\n    port = int(os.getenv('REDIS_PORT', '6379'))\n    \n    if not host:\n        raise ValueError(\"REDIS_HOST environment variable is not set\")\n    \n    return redis.Redis(\n        host=host,\n        port=port,\n        ssl=True,  # Enable SSL for encrypted connection\n        decode_responses=True\n    )\n\n\ndef store_request_data(\n    redis_client: redis.Redis,\n    request_id: str,\n    user_name: str,\n    message: str,\n    priority: Optional[int] = 1\n) -> bool:\n    \"\"\"Store request data in Redis\"\"\"\n    try:\n        data = {\n            \"request_id\": request_id,\n            \"user_name\": user_name,\n            \"message\": message,\n            \"priority\": priority\n        }\n        # Store as a hash\n        redis_client.hset(f\"request:{request_id}\", mapping=data)\n        # Set expiration for 24 hours\n        redis_client.expire(f\"request:{request_id}\", 86400)\n        return True\n    except Exception as e:\n        print(f\"Error storing data: {str(e)}\")\n        return False\n\n\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser(description=\"Store request data in Redis\")\n    parser.add_argument(\"request_id\", help=\"Unique request identifier\")\n    parser.add_argument(\"user_name\", help=\"Name of the user\")\n    parser.add_argument(\"message\", help=\"Message to store\")\n    parser.add_argument(\"--priority\", type=int, default=1, help=\"Request priority (default: 1)\")\n\n    args = parser.parse_args()\n\n    try:\n        # Connect to Redis using environment variables\n        redis_client = connect_to_redis()\n\n        # Store the data\n        success = store_request_data(\n            redis_client,\n            args.request_id,\n            args.user_name,\n            args.message,\n            args.priority\n        )\n\n        if success:\n            print(f\"Successfully stored request {args.request_id} in Redis\")\n        else:\n            print(f\"Failed to store request {args.request_id} in Redis\")\n            exit(1)\n    except ValueError as e:\n        print(f\"Configuration error: {str(e)}\")\n        exit(1)\n    except Exception as e:\n        print(f\"Unexpected error: {str(e)}\")\n        exit(1)\n"
+        },
+        {
+          "source": null,
+          "destination": "/tmp/requirements.txt",
+          "content": "redis>=5.0.0\n"
+        }
+      ],
+      "with_services": [],
+      "with_git_repo": null,
+      "with_volumes": [],
+      "entrypoint": [],
+      "icon_url": null,
+      "image": "python:3.12",
+      "long_running": false,
+      "on_start": null,
+      "on_complete": null,
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"store_request\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Unique request identifier\"):::paramClass\n        Param1(\"user_name (Required)<br/>Name of the user\"):::paramClass\n        Param2(\"message (Required)<br/>Message to store\"):::paramClass\n        Param3(\"priority (Optional)<br/>Request priority<br/>Default: 1\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/>curl -LsSf https://astral.sh/uv/install.sh | sh >...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "workflow": false,
+      "metadata": {}
+    }
+  ],
+  "errors": [],
+  "python_bundle_version": "3.11.9"
+}
