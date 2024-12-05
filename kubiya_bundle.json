@@ -145,7 +145,8 @@
       ],
       "env": [
         "REDIS_HOST",
-        "REDIS_PORT"
+        "REDIS_PORT",
+        "AWS_PROFILE"
       ],
       "secrets": [],
       "dependencies": null,
@@ -161,6 +162,16 @@
           "source": null,
           "destination": "/tmp/requirements.txt",
           "content": "redis>=5.0.0\nboto3>=1.26.0\n"
+        },
+        {
+          "source": "$HOME/.aws/credentials",
+          "destination": "/root/.aws/credentials",
+          "content": null
+        },
+        {
+          "source": "$HOME/.aws/config",
+          "destination": "/root/.aws/config",
+          "content": null
         }
       ],
       "with_services": [],
@@ -172,7 +183,7 @@
       "long_running": false,
       "on_start": null,
       "on_complete": null,
-      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"terraform_plan\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"user_name (Required)<br/>Name of the user requesting the change\"):::paramClass\n        Param1(\"environment (Required)<br/>Target environment (dev, staging, prod)\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/># Install required packages<br/>apt-get update && apt...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"terraform_plan\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"user_name (Required)<br/>Name of the user requesting the change\"):::paramClass\n        Param1(\"environment (Required)<br/>Target environment (dev, staging, prod)\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/># Install required packages<br/>apt-get update && apt...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT<br/>AWS_PROFILE\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
       "workflow": false,
       "metadata": {}
     },
@@ -197,7 +208,8 @@
       ],
       "env": [
         "REDIS_HOST",
-        "REDIS_PORT"
+        "REDIS_PORT",
+        "AWS_PROFILE"
       ],
       "secrets": [],
       "dependencies": null,
@@ -213,6 +225,16 @@
           "source": null,
           "destination": "/tmp/requirements.txt",
           "content": "redis>=5.0.0\nboto3>=1.26.0\n"
+        },
+        {
+          "source": "$HOME/.aws/credentials",
+          "destination": "/root/.aws/credentials",
+          "content": null
+        },
+        {
+          "source": "$HOME/.aws/config",
+          "destination": "/root/.aws/config",
+          "content": null
         }
       ],
       "with_services": [],
@@ -224,7 +246,7 @@
       "long_running": false,
       "on_start": null,
       "on_complete": null,
-      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"terraform_apply\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Request ID from the terraform plan\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/># Install required packages<br/>apt-get update && apt...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"terraform_apply\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Request ID from the terraform plan\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/># Install required packages<br/>apt-get update && apt...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT<br/>AWS_PROFILE\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
       "workflow": false,
       "metadata": {}
     }

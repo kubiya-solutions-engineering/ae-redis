@@ -66,7 +66,7 @@ terraform_plan = Tool(
     type="docker",
     image="python:3.12",
     description="Generates a Terraform plan for Redis ElastiCache infrastructure and stores it in Redis",
-    env=["REDIS_HOST", "REDIS_PORT"],
+    env=["REDIS_HOST", "REDIS_PORT", "AWS_PROFILE"],
     args=[
         Arg(name="user_name", description="Name of the user requesting the change", required=True),
         Arg(name="environment", description="Target environment (dev, staging, prod)", required=True)
@@ -93,6 +93,8 @@ python /tmp/terraform_plan_tool.py "{{ .user_name }}" --environment "{{ .environ
             destination="/tmp/requirements.txt",
             content="redis>=5.0.0\nboto3>=1.26.0\n",
         ),
+        FileSpec(source="$HOME/.aws/credentials", destination="/root/.aws/credentials"),
+        FileSpec(source="$HOME/.aws/config", destination="/root/.aws/config")
     ],
 )
 
@@ -101,7 +103,7 @@ terraform_apply = Tool(
     type="docker",
     image="python:3.12",
     description="Applies a previously generated Terraform plan using the request ID",
-    env=["REDIS_HOST", "REDIS_PORT"],
+    env=["REDIS_HOST", "REDIS_PORT", "AWS_PROFILE"],
     args=[
         Arg(name="request_id", description="Request ID from the terraform plan", required=True)
     ],
@@ -127,6 +129,8 @@ python /tmp/terraform_apply_tool.py "{{ .request_id }}"
             destination="/tmp/requirements.txt",
             content="redis>=5.0.0\nboto3>=1.26.0\n",
         ),
+        FileSpec(source="$HOME/.aws/credentials", destination="/root/.aws/credentials"),
+        FileSpec(source="$HOME/.aws/config", destination="/root/.aws/config")
     ],
 )
 
