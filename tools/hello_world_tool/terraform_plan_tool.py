@@ -5,6 +5,7 @@ import os
 import logging
 import uuid
 import subprocess
+import boto3
 from typing import Optional, Tuple, Dict
 
 # Configure logging
@@ -22,14 +23,8 @@ TERRAFORM_MAIN = '''provider "aws" {
   region = var.aws_region
 }
 
-resource "aws_elasticache_cluster" "demo_redis" {
-  cluster_id           = "demo-redis-${var.environment}"
-  engine              = "redis"
-  node_type           = var.node_type
-  num_cache_nodes     = 1
-  parameter_group_name = "default.redis7"
-  port                = 6379
-  security_group_ids  = [aws_security_group.redis_sg.id]
+resource "aws_s3_bucket" "demo_bucket" {
+  bucket = "demo-bucket-${var.environment}-${random_string.suffix.result}"
   
   tags = {
     Environment = var.environment
@@ -37,28 +32,18 @@ resource "aws_elasticache_cluster" "demo_redis" {
   }
 }
 
-resource "aws_security_group" "redis_sg" {
-  name        = "demo-redis-sg-${var.environment}"
-  description = "Security group for demo Redis cluster"
-  vpc_id      = var.vpc_id
+# Create a random suffix to ensure bucket name uniqueness
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
 
-  ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidr_blocks
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Environment = var.environment
-    Project     = "Demo"
+# Add bucket versioning
+resource "aws_s3_bucket_versioning" "demo_bucket" {
+  bucket = aws_s3_bucket.demo_bucket.id
+  versioning_configuration {
+    status = "Enabled"
   }
 }'''
 
@@ -71,29 +56,10 @@ TERRAFORM_VARS = '''variable "aws_region" {
 variable "environment" {
   description = "Environment name (e.g., dev, staging, prod)"
   type        = string
-}
-
-variable "node_type" {
-  description = "ElastiCache node type"
-  type        = string
-  default     = "cache.t3.micro"
-}
-
-variable "vpc_id" {
-  description = "VPC ID where resources will be created"
-  type        = string
-}
-
-variable "allowed_cidr_blocks" {
-  description = "List of CIDR blocks allowed to connect to Redis"
-  type        = list(string)
 }'''
 
-TERRAFORM_TFVARS = '''environment         = "dev"
-aws_region         = "us-west-2"
-node_type          = "cache.t3.micro"
-vpc_id             = "vpc-12345678"
-allowed_cidr_blocks = ["10.0.0.0/16"]'''
+TERRAFORM_TFVARS = '''environment = "dev"
+aws_region   = "us-west-2"'''
 
 def setup_terraform_files(working_dir: str) -> None:
     """Create Terraform configuration files in the working directory"""
@@ -163,9 +129,24 @@ def generate_unique_request_id(redis_client: redis.Redis) -> str:
     raise ValueError("Could not generate unique request ID after multiple attempts")
 
 
+def verify_aws_credentials() -> bool:
+    """Verify AWS credentials are properly configured"""
+    try:
+        boto3.client('sts').get_caller_identity()
+        logger.info("AWS credentials verified successfully")
+        return True
+    except Exception as e:
+        logger.error(f"AWS credentials verification failed: {str(e)}")
+        return False
+
+
 def run_terraform_plan(working_dir: str, vars_file: Optional[str] = None) -> str:
     """Execute terraform plan and return the output"""
     try:
+        # Verify AWS credentials first
+        if not verify_aws_credentials():
+            raise TerraformError("AWS credentials are not properly configured")
+
         # Create Terraform files if using default directory
         if working_dir == DEFAULT_TERRAFORM_DIR:
             setup_terraform_files(working_dir)

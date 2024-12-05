@@ -1,4 +1,2 @@
 redis
-slack-sdk
-fuzzywuzzy
-python-Levenshtein
+boto3

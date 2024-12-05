@@ -91,7 +91,7 @@ python /tmp/terraform_plan_tool.py "{{ .user_name }}" --environment "{{ .environ
         ),
         FileSpec(
             destination="/tmp/requirements.txt",
-            content="redis>=5.0.0\n",
+            content="redis>=5.0.0\nboto3>=1.26.0\n",
         ),
     ],
 )
@@ -125,7 +125,7 @@ python /tmp/terraform_apply_tool.py "{{ .request_id }}"
         ),
         FileSpec(
             destination="/tmp/requirements.txt",
-            content="redis>=5.0.0\n",
+            content="redis>=5.0.0\nboto3>=1.26.0\n",
         ),
     ],
 )

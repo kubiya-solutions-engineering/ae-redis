@@ -5,6 +5,7 @@ import os
 import logging
 import subprocess
 from typing import Optional, Dict
+import boto3
 
 # Configure logging
 logging.basicConfig(
@@ -82,9 +83,23 @@ def setup_terraform_files(working_dir: str, environment: str) -> None:
     with open(os.path.join(working_dir, "terraform.tfvars"), "w") as f:
         f.write(tfvars_content)
 
+def verify_aws_credentials() -> bool:
+    """Verify AWS credentials are properly configured"""
+    try:
+        boto3.client('sts').get_caller_identity()
+        logger.info("AWS credentials verified successfully")
+        return True
+    except Exception as e:
+        logger.error(f"AWS credentials verification failed: {str(e)}")
+        return False
+
 def run_terraform_apply(working_dir: str) -> str:
     """Execute terraform apply"""
     try:
+        # Verify AWS credentials first
+        if not verify_aws_credentials():
+            raise TerraformError("AWS credentials are not properly configured")
+
         # Initialize Terraform first
         init_cmd = ["terraform", "init"]
         subprocess.run(init_cmd, cwd=working_dir, check=True, capture_output=True)
