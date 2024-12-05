@@ -1,5 +1,7 @@
 from . import main
 from . import send_to_slack
+from . import terraform_plan_tool
+from . import terraform_apply_tool
 import inspect
 
 from kubiya_sdk.tools.models import Tool, Arg, FileSpec
@@ -59,5 +61,60 @@ python /tmp/send_to_slack.py "{{ .request_id }}" "{{ .channel }}"
     ],
 )
 
+terraform_plan = Tool(
+    name="terraform_plan",
+    type="docker",
+    image="hashicorp/terraform:latest",
+    description="Generates a Terraform plan for Redis ElastiCache infrastructure and stores it in Redis",
+    env=["REDIS_HOST", "REDIS_PORT"],
+    args=[
+        Arg(name="user_name", description="Name of the user requesting the change", required=True),
+        Arg(name="environment", description="Target environment (dev, staging, prod)", required=True)
+    ],
+    content="""
+pip install -r /tmp/requirements.txt > /dev/null 2>&1
+
+python /tmp/terraform_plan_tool.py "{{ .user_name }}" --environment "{{ .environment }}"
+""",
+    with_files=[
+        FileSpec(
+            destination="/tmp/terraform_plan_tool.py",
+            content=inspect.getsource(terraform_plan_tool),
+        ),
+        FileSpec(
+            destination="/tmp/requirements.txt",
+            content="redis>=5.0.0\n",
+        ),
+    ],
+)
+
+terraform_apply = Tool(
+    name="terraform_apply",
+    type="docker",
+    image="hashicorp/terraform:latest",
+    description="Applies a previously generated Terraform plan using the request ID",
+    env=["REDIS_HOST", "REDIS_PORT"],
+    args=[
+        Arg(name="request_id", description="Request ID from the terraform plan", required=True)
+    ],
+    content="""
+pip install -r /tmp/requirements.txt > /dev/null 2>&1
+
+python /tmp/terraform_apply_tool.py "{{ .request_id }}"
+""",
+    with_files=[
+        FileSpec(
+            destination="/tmp/terraform_apply_tool.py",
+            content=inspect.getsource(terraform_apply_tool),
+        ),
+        FileSpec(
+            destination="/tmp/requirements.txt",
+            content="redis>=5.0.0\n",
+        ),
+    ],
+)
+
 tool_registry.register("redis_store", redis_tool)
 tool_registry.register("slack_sender", slack_tool)
+tool_registry.register("terraform_plan", terraform_plan)
+tool_registry.register("terraform_apply", terraform_apply)
