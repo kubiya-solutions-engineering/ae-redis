@@ -40,8 +40,7 @@ slack_tool = Tool(
     description="Retrieves request data (user name, message) from Redis using the request ID and sends it to Slack",
     env=["REDIS_HOST", "REDIS_PORT", "SLACK_BOT_TOKEN"],
     args=[
-        Arg(name="request_id", description="Request ID to retrieve user name and message from Redis", required=True),
-        Arg(name="channel", description="Slack channel to send the message to", required=True)
+        Arg(name="request_id", description="Request ID to retrieve user name and message from Redis", required=True)
     ],
     content="""
 pip install -r /tmp/requirements.txt > /dev/null 2>&1
