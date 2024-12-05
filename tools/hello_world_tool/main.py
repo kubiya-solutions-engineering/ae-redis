@@ -28,15 +28,33 @@ def connect_to_redis() -> redis.Redis:
         raise RedisConnectionError("REDIS_HOST environment variable is not set")
     
     try:
+        # Log connection attempt
+        logger.info(f"Attempting to connect to Redis at {host}:{port}")
+        
+        # Add connection timeout to avoid hanging
         client = redis.Redis(
             host=host,
             port=port,
-            decode_responses=True
+            decode_responses=True,
+            socket_timeout=5.0,  # 5 second timeout
+            socket_connect_timeout=5.0
         )
-        # Test the connection
-        client.ping()
+        
+        # Test the connection with timeout
+        try:
+            client.ping()
+        except redis.TimeoutError:
+            logger.error(f"Connection timeout while connecting to Redis at {host}:{port}")
+            raise RedisConnectionError(f"Connection timeout while connecting to Redis at {host}:{port}")
+        except redis.ConnectionError as e:
+            if "name resolution" in str(e).lower():
+                logger.error(f"DNS resolution failed for Redis host '{host}'. Please verify the hostname is correct.")
+                raise RedisConnectionError(f"DNS resolution failed for Redis host '{host}'. Please verify the hostname is correct.")
+            raise
+            
         logger.info(f"Successfully connected to Redis at {host}:{port}")
         return client
+        
     except redis.ConnectionError as e:
         logger.error(f"Failed to connect to Redis: {str(e)}")
         raise RedisConnectionError(f"Failed to connect to Redis: {str(e)}")
