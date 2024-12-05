@@ -31,7 +31,6 @@ def connect_to_redis() -> redis.Redis:
         client = redis.Redis(
             host=host,
             port=port,
-            ssl=True,  # Enable SSL for encrypted connection
             decode_responses=True
         )
         # Test the connection
