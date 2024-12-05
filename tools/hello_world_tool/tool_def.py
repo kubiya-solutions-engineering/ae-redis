@@ -72,8 +72,11 @@ terraform_plan = Tool(
         Arg(name="environment", description="Target environment (dev, staging, prod)", required=True)
     ],
     content="""
-# Install terraform
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+# Install required packages
+apt-get update && apt-get install -y lsb-release gnupg software-properties-common curl
+
+# Install Terraform
+curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 apt-get update && apt-get install -y terraform
 
@@ -103,8 +106,11 @@ terraform_apply = Tool(
         Arg(name="request_id", description="Request ID from the terraform plan", required=True)
     ],
     content="""
-# Install terraform
-wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+# Install required packages
+apt-get update && apt-get install -y lsb-release gnupg software-properties-common curl
+
+# Install Terraform
+curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
 apt-get update && apt-get install -y terraform
 
