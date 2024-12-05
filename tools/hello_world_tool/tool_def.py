@@ -64,7 +64,7 @@ python /tmp/send_to_slack.py "{{ .request_id }}" "{{ .channel }}"
 terraform_plan = Tool(
     name="terraform_plan",
     type="docker",
-    image="hashicorp/terraform:latest",
+    image="python:3.12",
     description="Generates a Terraform plan for Redis ElastiCache infrastructure and stores it in Redis",
     env=["REDIS_HOST", "REDIS_PORT"],
     args=[
@@ -72,6 +72,11 @@ terraform_plan = Tool(
         Arg(name="environment", description="Target environment (dev, staging, prod)", required=True)
     ],
     content="""
+# Install terraform
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+apt-get update && apt-get install -y terraform
+
 pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
 python /tmp/terraform_plan_tool.py "{{ .user_name }}" --environment "{{ .environment }}"
@@ -91,13 +96,18 @@ python /tmp/terraform_plan_tool.py "{{ .user_name }}" --environment "{{ .environ
 terraform_apply = Tool(
     name="terraform_apply",
     type="docker",
-    image="hashicorp/terraform:latest",
+    image="python:3.12",
     description="Applies a previously generated Terraform plan using the request ID",
     env=["REDIS_HOST", "REDIS_PORT"],
     args=[
         Arg(name="request_id", description="Request ID from the terraform plan", required=True)
     ],
     content="""
+# Install terraform
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
+apt-get update && apt-get install -y terraform
+
 pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
 python /tmp/terraform_apply_tool.py "{{ .request_id }}"
