@@ -55,7 +55,7 @@ python /tmp/send_to_slack.py "{{ .request_id }}" "{{ .channel }}"
         ),
         FileSpec(
             destination="/tmp/requirements.txt",
-            content="redis>=5.0.0\nslack-sdk>=3.0.0\n",
+            content="redis>=5.0.0\nslack-sdk>=3.0.0\nfuzzywuzzy>=0.18.0\npython-Levenshtein>=0.21.0\n",
         ),
     ],
 )
