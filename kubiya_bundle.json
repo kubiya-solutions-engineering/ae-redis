@@ -69,6 +69,68 @@
       "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"store_request\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Unique request identifier\"):::paramClass\n        Param1(\"user_name (Required)<br/>Name of the user\"):::paramClass\n        Param2(\"message (Required)<br/>Message to store\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/>pip install -r /tmp/requirements.txt > /dev/null ...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
       "workflow": false,
       "metadata": {}
+    },
+    {
+      "name": "send_to_slack",
+      "source": null,
+      "alias": null,
+      "description": "Retrieves request data (user name, message) from Redis using the request ID and sends it to Slack",
+      "type": "docker",
+      "content": "\npip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/send_to_slack.py \"{{ .request_id }}\" \"{{ .channel }}\"\n",
+      "content_url": null,
+      "args": [
+        {
+          "name": "request_id",
+          "type": null,
+          "description": "Request ID to retrieve user name and message from Redis",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        },
+        {
+          "name": "channel",
+          "type": null,
+          "description": "Slack channel to send the message to",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        }
+      ],
+      "env": [
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "SLACK_BOT_TOKEN"
+      ],
+      "secrets": [],
+      "dependencies": null,
+      "dependencies_url": null,
+      "openapi": null,
+      "with_files": [
+        {
+          "source": null,
+          "destination": "/tmp/send_to_slack.py",
+          "content": "import argparse\nimport redis\nimport os\nimport logging\nfrom slack_sdk import WebClient\nfrom slack_sdk.errors import SlackApiError\nfrom typing import Optional, Dict\n\n# Configure logging\nlogging.basicConfig(\n    level=logging.INFO,\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\n\nclass RedisConnectionError(Exception):\n    \"\"\"Custom exception for Redis connection errors\"\"\"\n    pass\n\n\ndef connect_to_redis() -> redis.Redis:\n    \"\"\"Establish connection to Redis using environment variables\"\"\"\n    host = os.getenv('REDIS_HOST')\n    port = int(os.getenv('REDIS_PORT', '6379'))\n    \n    if not host:\n        logger.error(\"REDIS_HOST environment variable is not set\")\n        raise RedisConnectionError(\"REDIS_HOST environment variable is not set\")\n    \n    try:\n        logger.info(f\"Attempting to connect to Redis at {host}:{port}\")\n        client = redis.Redis(\n            host=host,\n            port=port,\n            decode_responses=True,\n            socket_timeout=5.0,\n            socket_connect_timeout=5.0\n        )\n        \n        client.ping()\n        logger.info(f\"Successfully connected to Redis at {host}:{port}\")\n        return client\n        \n    except redis.ConnectionError as e:\n        logger.error(f\"Failed to connect to Redis: {str(e)}\")\n        raise RedisConnectionError(f\"Failed to connect to Redis: {str(e)}\")\n\n\ndef get_request_data(redis_client: redis.Redis, request_id: str) -> Optional[Dict]:\n    \"\"\"Retrieve request data from Redis\"\"\"\n    try:\n        data = redis_client.hgetall(f\"request:{request_id}\")\n        if not data:\n            logger.error(f\"No data found for request_id: {request_id}\")\n            return None\n        \n        logger.info(f\"Successfully retrieved data for request_id: {request_id}\")\n        return data\n    except redis.RedisError as e:\n        logger.error(f\"Redis error while retrieving data: {str(e)}\")\n        return None\n\n\ndef send_slack_message(channel: str, message: str, user_name: str) -> bool:\n    \"\"\"Send message to Slack channel\n    \n    Args:\n        channel: Slack channel identifier (can be '#channel' or 'C123456' format)\n        message: Message content to send\n        user_name: Name of the user sending the message\n    \n    Returns:\n        bool: True if message was sent successfully, False otherwise\n    \"\"\"\n    slack_token = os.getenv('SLACK_BOT_TOKEN')\n    if not slack_token:\n        logger.error(\"SLACK_BOT_TOKEN environment variable is not set\")\n        raise ValueError(\"SLACK_BOT_TOKEN environment variable is not set\")\n\n    client = WebClient(token=slack_token)\n    \n    # Ensure channel format is correct\n    if not (channel.startswith('#') or channel.startswith('C')):\n        channel = f\"#{channel}\"\n    \n    try:\n        # Format the message with the username\n        formatted_message = f\"Message from {user_name}:\\n{message}\"\n        \n        # Send message to Slack\n        response = client.chat_postMessage(\n            channel=channel,\n            text=formatted_message\n        )\n        \n        logger.info(f\"Message successfully sent to Slack channel: {channel}\")\n        return True\n        \n    except SlackApiError as e:\n        logger.error(f\"Failed to send message to Slack: {str(e)}\")\n        return False\n\n\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser(description=\"Retrieve request data from Redis and send to Slack\")\n    parser.add_argument(\"request_id\", help=\"Request ID to retrieve from Redis\")\n    parser.add_argument(\"channel\", help=\"Slack channel to send the message to\")\n\n    args = parser.parse_args()\n\n    try:\n        # Connect to Redis\n        redis_client = connect_to_redis()\n\n        # Get the data\n        data = get_request_data(redis_client, args.request_id)\n        if not data:\n            logger.error(\"Failed to retrieve data from Redis\")\n            exit(1)\n\n        # Send to Slack\n        success = send_slack_message(\n            channel=args.channel,\n            message=data['message'],\n            user_name=data['user_name']\n        )\n\n        if success:\n            logger.info(f\"Successfully processed request {args.request_id}\")\n        else:\n            logger.error(f\"Failed to send message to Slack for request {args.request_id}\")\n            exit(1)\n\n    except RedisConnectionError as e:\n        logger.error(f\"Redis connection error: {str(e)}\")\n        exit(1)\n    except ValueError as e:\n        logger.error(f\"Validation error: {str(e)}\")\n        exit(1)\n    except Exception as e:\n        logger.error(f\"Unexpected error: {str(e)}\", exc_info=True)\n        exit(1)\n    finally:\n        try:\n            redis_client.close()\n            logger.debug(\"Redis connection closed\")\n        except:\n            pass \n"
+        },
+        {
+          "source": null,
+          "destination": "/tmp/requirements.txt",
+          "content": "redis>=5.0.0\nslack-sdk>=3.0.0\n"
+        }
+      ],
+      "with_services": [],
+      "with_git_repo": null,
+      "with_volumes": [],
+      "entrypoint": [],
+      "icon_url": null,
+      "image": "python:3.12",
+      "long_running": false,
+      "on_start": null,
+      "on_complete": null,
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"send_to_slack\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Request ID to retrieve user name and message from Redis\"):::paramClass\n        Param1(\"channel (Required)<br/>Slack channel to send the message to\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/>pip install -r /tmp/requirements.txt > /dev/null ...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT<br/>SLACK_BOT_TOKEN\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "workflow": false,
+      "metadata": {}
     }
   ],
   "errors": [],
