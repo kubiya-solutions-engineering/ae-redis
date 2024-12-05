@@ -3,6 +3,7 @@ import redis
 import json
 import os
 import logging
+import uuid
 from typing import Optional
 
 # Configure logging
@@ -63,17 +64,35 @@ def connect_to_redis() -> redis.Redis:
         raise RedisConnectionError(f"Unexpected error while connecting to Redis: {str(e)}")
 
 
+def generate_unique_request_id(redis_client: redis.Redis) -> str:
+    """Generate a unique request ID and ensure it doesn't exist in Redis"""
+    max_attempts = 5
+    for _ in range(max_attempts):
+        # Generate a random UUID4 and take first 8 characters
+        request_id = str(uuid.uuid4())[:8]
+        
+        # Check if this ID already exists
+        if not redis_client.exists(f"request:{request_id}"):
+            logger.info(f"Generated unique request ID: {request_id}")
+            return request_id
+    
+    # If we couldn't generate a unique ID after max attempts
+    raise ValueError("Could not generate unique request ID after multiple attempts")
+
+
 def store_request_data(
     redis_client: redis.Redis,
-    request_id: str,
     user_name: str,
     message: str,
-) -> bool:
-    """Store request data in Redis"""
+) -> tuple[str, bool]:
+    """Store request data in Redis with auto-generated request ID"""
     try:
-        if not request_id or not user_name or not message:
+        if not user_name or not message:
             logger.error("Missing required parameters")
-            raise ValueError("request_id, user_name, and message are required")
+            raise ValueError("user_name and message are required")
+
+        # Generate unique request ID
+        request_id = generate_unique_request_id(redis_client)
 
         data = {
             "request_id": request_id,
@@ -88,18 +107,17 @@ def store_request_data(
         redis_client.expire(f"request:{request_id}", 86400)
         
         logger.info(f"Successfully stored data for request_id: {request_id}")
-        return True
+        return request_id, True
     except redis.RedisError as e:
         logger.error(f"Redis error while storing data: {str(e)}")
-        return False
+        return None, False
     except Exception as e:
         logger.error(f"Unexpected error while storing data: {str(e)}")
-        return False
+        return None, False
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Store request data in Redis")
-    parser.add_argument("request_id", help="Unique request identifier")
     parser.add_argument("user_name", help="Name of the user")
     parser.add_argument("message", help="Message to store")
 
@@ -110,17 +128,18 @@ if __name__ == "__main__":
         redis_client = connect_to_redis()
 
         # Store the data
-        success = store_request_data(
+        request_id, success = store_request_data(
             redis_client,
-            args.request_id,
             args.user_name,
             args.message,
         )
 
         if success:
-            logger.info(f"Successfully stored request {args.request_id} in Redis")
+            logger.info(f"Successfully stored request {request_id} in Redis")
+            # Print the request ID so it can be captured by the tool
+            print(request_id)
         else:
-            logger.error(f"Failed to store request {args.request_id} in Redis")
+            logger.error("Failed to store request in Redis")
             exit(1)
     except RedisConnectionError as e:
         logger.error(f"Redis connection error: {str(e)}")

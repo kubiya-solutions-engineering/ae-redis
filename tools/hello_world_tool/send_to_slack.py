@@ -85,31 +85,6 @@ def create_block_kit_message(message: str, user_name: str) -> list:
     ]
 
 
-def find_channel(client: WebClient, channel_input: str) -> Optional[str]:
-    """Find the correct channel ID from channel name or ID"""
-    logger.info(f"Attempting to find channel: {channel_input}")
-    
-    # If it's already a valid channel ID
-    if channel_input.startswith('C') and len(channel_input) == 11:
-        return channel_input
-    
-    # Remove '#' if present
-    channel_input = channel_input.lstrip('#')
-    
-    try:
-        for response in client.conversations_list(types="public_channel,private_channel"):
-            for channel in response["channels"]:
-                if channel["name"] == channel_input:
-                    return channel["id"]
-                elif fuzz.ratio(channel["name"], channel_input) > 80:
-                    logger.info(f"Found close match: {channel['name']}")
-                    return channel["id"]
-    except SlackApiError as e:
-        logger.error(f"Error listing channels: {e}")
-    
-    return None
-
-
 def send_slack_message(channel: str, message: str, user_name: str) -> bool:
     """Send message to Slack channel with improved formatting and error handling"""
     slack_token = os.getenv('SLACK_API_TOKEN')
@@ -121,10 +96,6 @@ def send_slack_message(channel: str, message: str, user_name: str) -> bool:
     
     # Hardcode channel to #testing
     channel = "#testing"
-    channel_id = find_channel(client, channel)
-    if not channel_id:
-        logger.error(f"Could not find channel: {channel}")
-        return False
     
     try:
         # Create Block Kit message
@@ -134,7 +105,7 @@ def send_slack_message(channel: str, message: str, user_name: str) -> bool:
         # Try sending with Block Kit first
         try:
             response = client.chat_postMessage(
-                channel=channel_id,
+                channel=channel,
                 blocks=blocks,
                 text=fallback_text
             )
@@ -142,7 +113,7 @@ def send_slack_message(channel: str, message: str, user_name: str) -> bool:
         except SlackApiError as block_error:
             logger.warning(f"Failed to send Block Kit message: {block_error}. Falling back to regular message.")
             response = client.chat_postMessage(
-                channel=channel_id,
+                channel=channel,
                 text=fallback_text
             )
             logger.info(f"Regular message sent successfully to {channel}")
