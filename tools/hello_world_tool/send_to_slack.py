@@ -112,10 +112,10 @@ def find_channel(client: WebClient, channel_input: str) -> Optional[str]:
 
 def send_slack_message(channel: str, message: str, user_name: str) -> bool:
     """Send message to Slack channel with improved formatting and error handling"""
-    slack_token = os.getenv('SLACK_BOT_TOKEN')
+    slack_token = os.getenv('SLACK_API_TOKEN')
     if not slack_token:
-        logger.error("SLACK_BOT_TOKEN environment variable is not set")
-        raise ValueError("SLACK_BOT_TOKEN environment variable is not set")
+        logger.error("SLACK_API_TOKEN environment variable is not set")
+        raise ValueError("SLACK_API_TOKEN environment variable is not set")
 
     client = WebClient(token=slack_token)
     
