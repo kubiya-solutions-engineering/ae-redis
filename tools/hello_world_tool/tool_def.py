@@ -38,7 +38,8 @@ slack_tool = Tool(
     type="docker",
     image="python:3.12",
     description="Retrieves request data (user name, message) from Redis using the request ID and sends it to Slack",
-    env=["REDIS_HOST", "REDIS_PORT", "SLACK_BOT_TOKEN"],
+    env=["REDIS_HOST", "REDIS_PORT"],
+    secrets=["SLACK_API_TOKEN"]
     args=[
         Arg(name="request_id", description="Request ID to retrieve user name and message from Redis", required=True)
     ],
