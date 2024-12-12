@@ -6,6 +6,7 @@ import logging
 import uuid
 import subprocess
 import boto3
+import time
 from typing import Optional, Tuple, Dict
 
 # Configure logging
@@ -232,14 +233,14 @@ def store_terraform_plan(
         # Run terraform plan
         plan_output, plan_json = run_terraform_plan(working_dir)
 
-        # Prepare data for storage
+        # Prepare data for storage with proper timestamp
         data = {
             "request_id": request_id,
             "user_name": user_name,
             "environment": environment,
             "plan_output": plan_output,
             "plan_json": plan_json,
-            "timestamp": str(uuid.uuid1().timestamp())
+            "timestamp": str(int(time.time()))  # Use time.time() instead of uuid timestamp
         }
         
         redis_client.hset(f"terraform_plan:{request_id}", mapping=data)

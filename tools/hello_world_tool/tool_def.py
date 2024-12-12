@@ -72,13 +72,14 @@ terraform_plan = Tool(
         Arg(name="environment", description="Target environment (dev, staging, prod)", required=True)
     ],
     content="""
-# Install required packages
-apt-get update && apt-get install -y lsb-release gnupg software-properties-common curl
+# Install required packages silently
+apt-get update > /dev/null 2>&1
+apt-get install -y lsb-release gnupg software-properties-common curl > /dev/null 2>&1
 
-# Install Terraform
-curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list
-apt-get update && apt-get install -y terraform
+# Install Terraform silently
+curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null 2>&1
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list > /dev/null 2>&1
+apt-get update > /dev/null 2>&1 && apt-get install -y terraform > /dev/null 2>&1
 
 pip install -r /tmp/requirements.txt > /dev/null 2>&1
 
