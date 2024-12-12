@@ -213,8 +213,8 @@ def store_terraform_plan(
 
         # Modify terraform.tfvars content with requested environment
         tfvars_content = TERRAFORM_TFVARS.replace(
-            'environment         = "dev"',
-            f'environment         = "{environment}"'
+            'environment = "dev"',
+            f'environment = "{environment}"'
         )
 
         # Ensure directory exists and write files
@@ -240,7 +240,7 @@ def store_terraform_plan(
             "environment": environment,
             "plan_output": plan_output,
             "plan_json": plan_json,
-            "timestamp": str(int(time.time()))  # Use time.time() instead of uuid timestamp
+            "timestamp": str(int(time.time()))  # Fixed timestamp generation
         }
         
         redis_client.hset(f"terraform_plan:{request_id}", mapping=data)
