@@ -1,5 +1,4 @@
 import argparse
-import uuid
 import redis
 import json
 import os
@@ -7,6 +6,7 @@ import logging
 import subprocess
 from typing import Optional, Dict
 import boto3
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -133,7 +133,7 @@ def execute_terraform_apply(redis_client: redis.Redis, request_id: str) -> bool:
         # Store the apply results in Redis
         apply_data = {
             "apply_output": apply_output,
-            "apply_timestamp": str(uuid.uuid1().timestamp()),
+            "apply_timestamp": str(time.time()),
             "status": "completed"
         }
         redis_client.hset(f"terraform_plan:{request_id}", mapping=apply_data)
