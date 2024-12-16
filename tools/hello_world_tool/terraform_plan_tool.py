@@ -233,14 +233,17 @@ def store_terraform_plan(
         # Run terraform plan
         plan_output, plan_json = run_terraform_plan(working_dir)
 
-        # Prepare data for storage with proper timestamp
+        # Store both the plan data and the Terraform configurations
         data = {
             "request_id": request_id,
             "user_name": user_name,
             "environment": environment,
             "plan_output": plan_output,
             "plan_json": plan_json,
-            "timestamp": str(int(time.time()))  # Fixed timestamp generation
+            "timestamp": str(int(time.time())),
+            "terraform_main": TERRAFORM_MAIN,
+            "terraform_vars": TERRAFORM_VARS,
+            "terraform_tfvars": tfvars_content
         }
         
         redis_client.hset(f"terraform_plan:{request_id}", mapping=data)

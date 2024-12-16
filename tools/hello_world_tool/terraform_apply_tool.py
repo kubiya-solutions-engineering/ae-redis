@@ -1,4 +1,5 @@
 import argparse
+import uuid
 import redis
 import json
 import os
@@ -61,27 +62,21 @@ def get_plan_data(redis_client: redis.Redis, request_id: str) -> Dict:
     
     return plan_data
 
-def setup_terraform_files(working_dir: str, environment: str) -> None:
-    """Recreate Terraform configuration files with the stored environment"""
-    from terraform_plan_tool import TERRAFORM_MAIN, TERRAFORM_VARS, TERRAFORM_TFVARS
-    
+def setup_terraform_files(working_dir: str, plan_data: Dict) -> None:
+    """Recreate Terraform configuration files using data from Redis"""
     os.makedirs(working_dir, exist_ok=True)
     
     # Write main.tf
     with open(os.path.join(working_dir, "main.tf"), "w") as f:
-        f.write(TERRAFORM_MAIN)
+        f.write(plan_data['terraform_main'])
     
     # Write variables.tf
     with open(os.path.join(working_dir, "variables.tf"), "w") as f:
-        f.write(TERRAFORM_VARS)
+        f.write(plan_data['terraform_vars'])
     
-    # Write terraform.tfvars with the stored environment
-    tfvars_content = TERRAFORM_TFVARS.replace(
-        'environment         = "dev"',
-        f'environment         = "{environment}"'
-    )
+    # Write terraform.tfvars (already contains correct environment)
     with open(os.path.join(working_dir, "terraform.tfvars"), "w") as f:
-        f.write(tfvars_content)
+        f.write(plan_data['terraform_tfvars'])
 
 def verify_aws_credentials() -> bool:
     """Verify AWS credentials are properly configured"""
@@ -128,9 +123,9 @@ def execute_terraform_apply(redis_client: redis.Redis, request_id: str) -> bool:
         # Get the stored plan data
         plan_data = get_plan_data(redis_client, request_id)
         
-        # Setup Terraform files with the stored environment
+        # Setup Terraform files using the stored configurations
         working_dir = DEFAULT_TERRAFORM_DIR
-        setup_terraform_files(working_dir, plan_data['environment'])
+        setup_terraform_files(working_dir, plan_data)
         
         # Run terraform apply
         apply_output = run_terraform_apply(working_dir)
