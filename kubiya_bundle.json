@@ -249,6 +249,120 @@
       "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"terraform_apply\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Request ID from the terraform plan\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/># Install required packages<br/>apt-get update && apt...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT<br/>AWS_PROFILE\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
       "workflow": false,
       "metadata": {}
+    },
+    {
+      "name": "store_favorites",
+      "source": null,
+      "alias": null,
+      "description": "Stores user's favorite color and animal in Redis and returns a unique request ID",
+      "type": "docker",
+      "content": "\npip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/redis_store_example.py --color \"{{ .color }}\" --animal \"{{ .animal }}\"\n",
+      "content_url": null,
+      "args": [
+        {
+          "name": "color",
+          "type": null,
+          "description": "User's favorite color",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        },
+        {
+          "name": "animal",
+          "type": null,
+          "description": "User's favorite animal",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        }
+      ],
+      "env": [
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "KUBIYA_USER_EMAIL"
+      ],
+      "secrets": [],
+      "dependencies": null,
+      "dependencies_url": null,
+      "openapi": null,
+      "with_files": [
+        {
+          "source": null,
+          "destination": "/tmp/redis_store_example.py",
+          "content": "import time\nimport redis\nimport json\nimport logging\nimport uuid\nimport os\nfrom typing import Dict, Optional\nimport argparse\n\n# Configure logging\nlogging.basicConfig(\n    level=logging.INFO,\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\nclass RedisStore:\n    def __init__(self, host: str, port: int = 6379):\n        self.client = redis.Redis(\n            host=host,\n            port=port,\n            decode_responses=True,\n            socket_timeout=5.0,\n            socket_connect_timeout=5.0\n        )\n    \n    def generate_unique_id(self) -> str:\n        \"\"\"Generate a unique ID for storing data\"\"\"\n        return str(uuid.uuid4())[:8]\n    \n    def store_user_data(self, user_data: Dict) -> Optional[str]:\n        \"\"\"\n        Store user data in Redis with a unique ID\n        Returns the ID if successful, None if failed\n        \"\"\"\n        try:\n            # Generate unique ID\n            data_id = self.generate_unique_id()\n            \n            # Add timestamp and user email from environment\n            user_data['timestamp'] = str(int(time.time()))\n            user_data['email'] = os.getenv('KUBIYA_USER_EMAIL')\n            \n            # Store in Redis with 24 hour expiration\n            self.client.hset(f\"user_profile:{data_id}\", mapping=user_data)\n            self.client.expire(f\"user_profile:{data_id}\", 86400)  # 24 hours\n            \n            logger.info(f\"Successfully stored user data with ID: {data_id}\")\n            return data_id\n            \n        except redis.RedisError as e:\n            logger.error(f\"Failed to store data in Redis: {str(e)}\")\n            return None\n\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser(description=\"Store request data in Redis\")\n    parser.add_argument(\n        \"--color\",\n        required=True,\n        help=\"Favorite color\"\n    )\n    parser.add_argument(\n        \"--animal\",\n        required=True,\n        help=\"Favorite animal\"\n    )\n\n    args = parser.parse_args()\n\n    # Example usage\n    redis_store = RedisStore(host=\"localhost\")\n    \n    # Example request with two simple arguments\n    request = {\n        \"favorite_color\": args.color,\n        \"favorite_animal\": args.animal\n    }\n    \n    # Store the data\n    data_id = redis_store.store_user_data(request)\n    if data_id:\n        # Show what actually got stored in Redis\n        stored_data = redis_store.client.hgetall(f\"user_profile:{data_id}\")\n        print(json.dumps({\n            \"request_id\": data_id,\n            \"stored_data\": stored_data\n        }))\n        # Exit with the request ID\n        exit(0)\n    else:\n        print(json.dumps({\n            \"error\": \"Failed to store data in Redis\"\n        }))\n        exit(1)\n"
+        },
+        {
+          "source": null,
+          "destination": "/tmp/requirements.txt",
+          "content": "redis>=5.0.0\n"
+        }
+      ],
+      "with_services": [],
+      "with_git_repo": null,
+      "with_volumes": [],
+      "entrypoint": [],
+      "icon_url": null,
+      "image": "python:3.12",
+      "long_running": false,
+      "on_start": null,
+      "on_complete": null,
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"store_favorites\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"color (Required)<br/>User's favorite color\"):::paramClass\n        Param1(\"animal (Required)<br/>User's favorite animal\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/>pip install -r /tmp/requirements.txt > /dev/null ...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT<br/>KUBIYA_USER_EMAIL\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "workflow": false,
+      "metadata": {}
+    },
+    {
+      "name": "retrieve_favorites",
+      "source": null,
+      "alias": null,
+      "description": "Retrieves user's favorite color and animal from Redis using the request ID",
+      "type": "docker",
+      "content": "\npip install -r /tmp/requirements.txt > /dev/null 2>&1\n\npython /tmp/redis_retrieve_example.py \"{{ .request_id }}\"\n",
+      "content_url": null,
+      "args": [
+        {
+          "name": "request_id",
+          "type": null,
+          "description": "Request ID to retrieve the stored favorites",
+          "required": true,
+          "default": null,
+          "options": null,
+          "options_from": null
+        }
+      ],
+      "env": [
+        "REDIS_HOST",
+        "REDIS_PORT"
+      ],
+      "secrets": [],
+      "dependencies": null,
+      "dependencies_url": null,
+      "openapi": null,
+      "with_files": [
+        {
+          "source": null,
+          "destination": "/tmp/redis_retrieve_example.py",
+          "content": "import redis\nimport json\nimport logging\nfrom typing import Dict, Optional\nimport argparse\n\n# Configure logging\nlogging.basicConfig(\n    level=logging.INFO,\n    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'\n)\nlogger = logging.getLogger(__name__)\n\nclass RedisRetriever:\n    def __init__(self, host: str, port: int = 6379):\n        self.client = redis.Redis(\n            host=host,\n            port=port,\n            decode_responses=True,\n            socket_timeout=5.0,\n            socket_connect_timeout=5.0\n        )\n    \n    def get_user_data(self, data_id: str) -> Optional[Dict]:\n        \"\"\"\n        Retrieve user data from Redis using the data ID\n        Returns the data if found, None if not found or error\n        \"\"\"\n        try:\n            # Get data from Redis\n            data = self.client.hgetall(f\"user_profile:{data_id}\")\n            \n            if not data:\n                logger.warning(f\"No data found for ID: {data_id}\")\n                return None\n            \n            logger.info(f\"Successfully retrieved data for ID: {data_id}\")\n            return data\n            \n        except redis.RedisError as e:\n            logger.error(f\"Failed to retrieve data from Redis: {str(e)}\")\n            return None\n    \n    def close(self):\n        \"\"\"Close the Redis connection\"\"\"\n        try:\n            self.client.close()\n            logger.debug(\"Redis connection closed\")\n        except:\n            pass\n\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser(description=\"Retrieve request data from Redis\")\n    parser.add_argument(\n        \"request_id\",\n        help=\"The request ID to retrieve data for\"\n    )\n\n    args = parser.parse_args()\n    \n    # Example usage\n    redis_retriever = RedisRetriever(host=\"localhost\")\n    \n    try:\n        # Retrieve request data using the request ID\n        request_data = redis_retriever.get_user_data(args.request_id)\n        \n        if request_data:\n            print(\"\\nRetrieved data:\")\n            print(json.dumps({\n                \"request_id\": args.request_id,\n                \"data\": {\n                    \"favorite_color\": request_data.get(\"favorite_color\"),\n                    \"favorite_animal\": request_data.get(\"favorite_animal\"),\n                    \"timestamp\": request_data.get(\"timestamp\"),\n                    \"email\": request_data.get(\"email\")\n                }\n            }, indent=2))\n        else:\n            print(json.dumps({\n                \"error\": f\"No data found for request ID: {args.request_id}\"\n            }))\n            exit(1)\n            \n    finally:\n        redis_retriever.close() \n"
+        },
+        {
+          "source": null,
+          "destination": "/tmp/requirements.txt",
+          "content": "redis>=5.0.0\n"
+        }
+      ],
+      "with_services": [],
+      "with_git_repo": null,
+      "with_volumes": [],
+      "entrypoint": [],
+      "icon_url": null,
+      "image": "python:3.12",
+      "long_running": false,
+      "on_start": null,
+      "on_complete": null,
+      "mermaid": "graph TD\n    %% Styles\n    classDef triggerClass fill:#3498db,color:#fff,stroke:#2980b9,stroke-width:2px,font-weight:bold\n    classDef paramClass fill:#2ecc71,color:#fff,stroke:#27ae60,stroke-width:2px\n    classDef execClass fill:#e74c3c,color:#fff,stroke:#c0392b,stroke-width:2px,font-weight:bold\n    classDef envClass fill:#f39c12,color:#fff,stroke:#f1c40f,stroke-width:2px\n\n    %% Main Components\n    Trigger(\"Trigger\"):::triggerClass\n    Params(\"Parameters\"):::paramClass\n    Exec(\"retrieve_favorites\"):::execClass\n    Env(\"Environment\"):::envClass\n\n    %% Flow\n    Trigger --> Params --> Exec\n    Env --> Exec\n\n    %% Trigger Options\n    User(\"User\")\n    API(\"API\")\n    Webhook(\"Webhook\")\n    Cron(\"Scheduled\")\n    User --> Trigger\n    API --> Trigger\n    Webhook --> Trigger\n    Cron --> Trigger\n\n    %% Parameters\n    subgraph Parameters[\"Parameters\"]\n        direction TB\n        Param0(\"request_id (Required)<br/>Request ID to retrieve the stored favorites\"):::paramClass\n    end\n    Parameters --- Params\n\n    %% Execution\n    subgraph Execution[\"Execution\"]\n        direction TB\n        Code(\"Script: <br/>pip install -r /tmp/requirements.txt > /dev/null ...\")\n        Type(\"Type: Docker\")\n        Image(\"Docker Image: python:3.12\")\n    end\n    Execution --- Exec\n\n    %% Environment\n    subgraph Environment[\"Environment\"]\n        direction TB\n        EnvVars(\"Environment Variables:<br/>REDIS_HOST<br/>REDIS_PORT\"):::envClass\n    end\n    Environment --- Env\n\n    %% Context Note\n    ContextNote(\"Parameter values can be<br/>fetched from context<br/>based on the trigger\")\n    ContextNote -.-> Params",
+      "workflow": false,
+      "metadata": {}
     }
   ],
   "errors": [],

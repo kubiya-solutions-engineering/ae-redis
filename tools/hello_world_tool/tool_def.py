@@ -2,6 +2,8 @@ from . import main
 from . import send_to_slack
 from . import terraform_plan_tool
 from . import terraform_apply_tool
+from . import redis_store_example
+from . import redis_retrieve_example
 import inspect
 
 from kubiya_sdk.tools.models import Tool, Arg, FileSpec
@@ -135,7 +137,62 @@ python /tmp/terraform_apply_tool.py "{{ .request_id }}"
     ],
 )
 
+redis_store_example_tool = Tool(
+    name="store_favorites",
+    type="docker",
+    image="python:3.12",
+    description="Stores user's favorite color and animal in Redis and returns a unique request ID",
+    env=["REDIS_HOST", "REDIS_PORT", "KUBIYA_USER_EMAIL"],
+    args=[
+        Arg(name="color", description="User's favorite color", required=True),
+        Arg(name="animal", description="User's favorite animal", required=True)
+    ],
+    content="""
+pip install -r /tmp/requirements.txt > /dev/null 2>&1
+
+python /tmp/redis_store_example.py --color "{{ .color }}" --animal "{{ .animal }}"
+""",
+    with_files=[
+        FileSpec(
+            destination="/tmp/redis_store_example.py",
+            content=inspect.getsource(redis_store_example),
+        ),
+        FileSpec(
+            destination="/tmp/requirements.txt",
+            content="redis>=5.0.0\n",
+        ),
+    ],
+)
+
+redis_retrieve_example_tool = Tool(
+    name="retrieve_favorites",
+    type="docker",
+    image="python:3.12",
+    description="Retrieves user's favorite color and animal from Redis using the request ID",
+    env=["REDIS_HOST", "REDIS_PORT"],
+    args=[
+        Arg(name="request_id", description="Request ID to retrieve the stored favorites", required=True)
+    ],
+    content="""
+pip install -r /tmp/requirements.txt > /dev/null 2>&1
+
+python /tmp/redis_retrieve_example.py "{{ .request_id }}"
+""",
+    with_files=[
+        FileSpec(
+            destination="/tmp/redis_retrieve_example.py",
+            content=inspect.getsource(redis_retrieve_example),
+        ),
+        FileSpec(
+            destination="/tmp/requirements.txt",
+            content="redis>=5.0.0\n",
+        ),
+    ],
+)
+
 tool_registry.register("redis_store", redis_tool)
 tool_registry.register("slack_sender", slack_tool)
 tool_registry.register("terraform_plan", terraform_plan)
 tool_registry.register("terraform_apply", terraform_apply)
+tool_registry.register("store_favorites", redis_store_example_tool)
+tool_registry.register("retrieve_favorites", redis_retrieve_example_tool)
