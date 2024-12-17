@@ -3,6 +3,13 @@ import json
 import logging
 from typing import Dict, Optional
 import argparse
+import os
+
+# Remove the import from redis_store_example
+# Add the error class definition instead
+class RedisConnectionError(Exception):
+    """Custom exception for Redis connection errors"""
+    pass
 
 # Configure logging
 logging.basicConfig(
@@ -12,7 +19,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class RedisRetriever:
-    def __init__(self, host: str, port: int = 6379):
+    def __init__(self):
+        host = os.getenv('REDIS_HOST')
+        port = int(os.getenv('REDIS_PORT', '6379'))
+        
+        if not host:
+            logger.error("REDIS_HOST environment variable is not set")
+            raise RedisConnectionError("REDIS_HOST environment variable is not set")
+            
         self.client = redis.Redis(
             host=host,
             port=port,
@@ -59,7 +73,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Example usage
-    redis_retriever = RedisRetriever(host="localhost")
+    redis_retriever = RedisRetriever()
     
     try:
         # Retrieve request data using the request ID
@@ -82,5 +96,10 @@ if __name__ == "__main__":
             }))
             exit(1)
             
+    except RedisConnectionError as e:
+        print(json.dumps({
+            "error": str(e)
+        }))
+        exit(1)
     finally:
         redis_retriever.close() 
