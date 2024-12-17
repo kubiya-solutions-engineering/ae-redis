@@ -66,9 +66,8 @@ class RedisStore:
             user_data['timestamp'] = str(int(time.time()))
             user_data['email'] = os.getenv('KUBIYA_USER_EMAIL')
             
-            # Store in Redis with 24 hour expiration
+            # Store in Redis without expiration
             self.client.hset(f"user_profile:{data_id}", mapping=user_data)
-            self.client.expire(f"user_profile:{data_id}", 86400)  # 24 hours
             
             logger.info(f"Successfully stored user data with ID: {data_id}")
             return data_id

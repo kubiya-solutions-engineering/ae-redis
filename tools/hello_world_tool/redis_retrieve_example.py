@@ -5,8 +5,6 @@ from typing import Dict, Optional
 import argparse
 import os
 
-# Remove the import from redis_store_example
-# Add the error class definition instead
 class RedisConnectionError(Exception):
     """Custom exception for Redis connection errors"""
     pass
@@ -55,6 +53,26 @@ class RedisRetriever:
             logger.error(f"Failed to retrieve data from Redis: {str(e)}")
             return None
     
+    def delete_user_data(self, data_id: str) -> bool:
+        """
+        Delete user data from Redis using the data ID
+        Returns True if successful, False otherwise
+        """
+        try:
+            # Delete data from Redis
+            result = self.client.delete(f"user_profile:{data_id}")
+            
+            if result:
+                logger.info(f"Successfully deleted data for ID: {data_id}")
+                return True
+            
+            logger.warning(f"No data found to delete for ID: {data_id}")
+            return False
+            
+        except redis.RedisError as e:
+            logger.error(f"Failed to delete data from Redis: {str(e)}")
+            return False
+    
     def close(self):
         """Close the Redis connection"""
         try:
@@ -90,6 +108,12 @@ if __name__ == "__main__":
                     "email": request_data.get("email")
                 }
             }, indent=2))
+            
+            # Delete the data after successful retrieval
+            if redis_retriever.delete_user_data(args.request_id):
+                logger.info(f"Data cleaned up for request ID: {args.request_id}")
+            else:
+                logger.warning(f"Failed to clean up data for request ID: {args.request_id}")
         else:
             print(json.dumps({
                 "error": f"No data found for request ID: {args.request_id}"
