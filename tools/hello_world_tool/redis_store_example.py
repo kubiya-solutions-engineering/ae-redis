@@ -14,15 +14,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class RedisStore:
-    def __init__(self, host: str, port: int = 6379):
-        self.client = redis.Redis(
+class RedisConnectionError(Exception):
+    """Custom exception for Redis connection errors"""
+    pass
+
+def connect_to_redis() -> redis.Redis:
+    """Establish connection to Redis using environment variables"""
+    host = os.getenv('REDIS_HOST')
+    port = int(os.getenv('REDIS_PORT', '6379'))
+    
+    if not host:
+        logger.error("REDIS_HOST environment variable is not set")
+        raise RedisConnectionError("REDIS_HOST environment variable is not set")
+    
+    try:
+        logger.info(f"Attempting to connect to Redis at {host}:{port}")
+        client = redis.Redis(
             host=host,
             port=port,
             decode_responses=True,
             socket_timeout=5.0,
             socket_connect_timeout=5.0
         )
+        
+        client.ping()
+        logger.info(f"Successfully connected to Redis at {host}:{port}")
+        return client
+        
+    except (redis.ConnectionError, redis.TimeoutError) as e:
+        logger.error(f"Failed to connect to Redis: {str(e)}")
+        raise RedisConnectionError(f"Failed to connect to Redis: {str(e)}")
+
+class RedisStore:
+    def __init__(self):
+        self.client = connect_to_redis()
     
     def generate_unique_id(self) -> str:
         """Generate a unique ID for storing data"""
@@ -67,28 +92,40 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Example usage
-    redis_store = RedisStore(host="localhost")
+    try:
+        # Create Redis store instance
+        redis_store = RedisStore()
+        
+        # Example request with two simple arguments
+        request = {
+            "favorite_color": args.color,
+            "favorite_animal": args.animal
+        }
+        
+        # Store the data
+        data_id = redis_store.store_user_data(request)
+        if data_id:
+            # Show what actually got stored in Redis
+            stored_data = redis_store.client.hgetall(f"user_profile:{data_id}")
+            print(json.dumps({
+                "request_id": data_id,
+                "stored_data": stored_data
+            }))
+            exit(0)
+        else:
+            print(json.dumps({
+                "error": "Failed to store data in Redis"
+            }))
+            exit(1)
     
-    # Example request with two simple arguments
-    request = {
-        "favorite_color": args.color,
-        "favorite_animal": args.animal
-    }
-    
-    # Store the data
-    data_id = redis_store.store_user_data(request)
-    if data_id:
-        # Show what actually got stored in Redis
-        stored_data = redis_store.client.hgetall(f"user_profile:{data_id}")
+    except RedisConnectionError as e:
         print(json.dumps({
-            "request_id": data_id,
-            "stored_data": stored_data
-        }))
-        # Exit with the request ID
-        exit(0)
-    else:
-        print(json.dumps({
-            "error": "Failed to store data in Redis"
+            "error": str(e)
         }))
         exit(1)
+    finally:
+        try:
+            redis_store.client.close()
+            logger.debug("Redis connection closed")
+        except:
+            pass
